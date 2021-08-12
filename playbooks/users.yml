@@ -48,6 +48,12 @@
     - username: "jy"
       groups: "adm,wheel"
       comment: "Jenya"
+    - username: "gp"
+      groups: "adm,wheel"
+      comment: "Giv Parvaneh"
+    - username: "bp"
+      groups: "adm,wheel"
+      comment: "Boris Polania"
     remove_users:
     - "foo"
     - "as"
