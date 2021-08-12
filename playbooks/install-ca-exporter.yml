@@ -1,0 +1,14 @@
+# ca exporter is the google Container Advisor exporter https://github.com/google/cadvisor/
+# default port usage has been changed from 8080 to 9101, pass in a cadvisor_port to overwrite it
+# current version used is 0.40.0, feel free to pass in cadvisor_version to overwrite it
+---
+- hosts: '{{ inventory }}'
+  remote_user: '{{ ansible_user }}'
+  gather_facts: yes
+
+  vars:
+    - version: "{{ cadvisor_version | default('0.40.0') }}"
+    - service_port: "{{ cadvisor_port | default ('9101') }}"
+
+  roles:
+    - cadvisor_exporter
