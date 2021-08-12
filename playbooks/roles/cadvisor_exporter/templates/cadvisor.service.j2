@@ -1,0 +1,12 @@
+[Unit]
+Description=cadvisor Exporter
+After=network.target
+
+[Service]
+User=cadvisor
+Group=cadvisor
+Type=simple
+ExecStart=/opt/cadvisor/cadvisor -port {{ service_port }}
+
+[Install]
+WantedBy=multi-user.target
