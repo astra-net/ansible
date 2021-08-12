@@ -39,9 +39,6 @@
     - username: "sp"
       groups: "adm,wheel"
       comment: "Soph"
-    - username: "xp"
-      groups: "adm,wheel"
-      comment: "Xiaopeng Li"
     - username: "sh"
       groups: "adm,wheel"
       comment: "Shaohan Alex"
@@ -54,6 +51,9 @@
     - username: "bp"
       groups: "adm,wheel"
       comment: "Boris Polania"
+    - username: "jc"
+      groups: "adm,wheel"
+      comment: "Jack Chan"
     remove_users:
     - "foo"
     - "as"
@@ -72,6 +72,7 @@
     - "ns"
     - "dm"
     - "sj"
+    - "xp"
   tasks:
   - name: "Create user accounts"
     user:
