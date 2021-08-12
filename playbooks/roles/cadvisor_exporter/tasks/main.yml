@@ -1,0 +1,49 @@
+---
+- name: create directories for cadvisor
+  become: true
+  file:
+    path: "{{ item }}"
+    state: directory
+    mode: 0755
+  with_items:
+    - /opt/cadvisor
+    - /etc/systemd/system/
+
+- name: download cadvisor
+  become: true
+  get_url: 
+    url: https://github.com/google/cadvisor/releases/download/v{{ version }}/cadvisor
+    dest: "/opt/cadvisor/cadvisor-{{ version }}"
+    mode: u=rwx,g=rx,o=rx
+    force: false
+
+- name: cadvisor symlink
+  become: true
+  file:
+    src: "/opt/cadvisor/cadvisor-{{ version }}"
+    path: /opt/cadvisor/cadvisor
+    force: true
+    state: link
+
+- name: add cadvisor user
+  become: true
+  user:
+    name: cadvisor
+    comment: user for cadvisor exporter
+    shell: /bin/false
+    system: yes
+
+- name: copy cadvisor service files
+  become: true
+  template:
+    src: cadvisor.service.j2
+    dest: /etc/systemd/system/cadvisor.service
+
+- name: enable cadvisor_exporter service
+  become: true
+  systemd: 
+    name: cadvisor
+    daemon_reload: yes
+    enabled: yes
+    state: restarted
+
