@@ -2,5 +2,9 @@
 - hosts: '{{ inventory }}'
   remote_user: '{{ ansible_user }}'
   gather_facts: yes
+
+  vars:
+    - version: "{{ node_exporter_version | default('1.0.1') }}"
+  
   roles:
     - node_exporter
