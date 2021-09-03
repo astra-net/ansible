@@ -1,4 +1,4 @@
-Version = "2.1.0"
+Version = "2.3.0"
 
 [BLSKeys]
   KMSConfigFile = ""
@@ -59,6 +59,7 @@ Version = "2.1.0"
   NetworkType = "mainnet"
 
 [P2P]
+  DiscConcurrency = 0
   IP = "0.0.0.0"
   KeyFile = "./.hmykey"
   Port = 9000
@@ -66,11 +67,18 @@ Version = "2.1.0"
 [Pprof]
   Enabled = true
   ListenAddr = "0.0.0.0:6060"
+  ProfileDebugValues = [0]
+  ProfileIntervals = [600]
+  ProfileNames = []
 
 [RPCOpt]
-  DebugEnabled = false
+  DebugEnabled = true
   RateLimterEnabled = true
+{% if node_type_var == "Explorer" %}
+  RequestsPerSecond = 50000
+{% else %}
   RequestsPerSecond = 1000
+{% endif %}
 
 [Sync]
   Concurrency = 6

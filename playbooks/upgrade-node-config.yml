@@ -1,0 +1,92 @@
+---
+- hosts: '{{ inventory }}'
+  serial: "{{ stride | default(2) }}"
+  gather_facts: yes
+  vars:
+    skip_consensus_check_var: "{{ skip_consensus_check | default('false') }}"
+    force_update_var: "{{ force_update | default('false') }}"
+    node_type_var: "{{ node_type | default('Validator') }}"
+    archival: "{{ is_archival | default('false') }}"
+
+  tasks:
+  - name: gather OS specific variables
+    include_vars: "{{ item }}"
+    with_first_found:
+      - '{{ ansible_bios_version }}-{{ ansible_distribution }}.yml'
+      - '{{ cloud_platform }}-{{ ansible_distribution }}.yml'
+    tags:
+      - vars
+
+  - name: "get is-leader"
+    shell: "curl -s --request POST 'http://127.0.0.1:9500/' --header 'Content-Type: application/json' --data-raw '{ \"jsonrpc\": \"2.0\", \"method\": \"hmyv2_getNodeMetadata\", \"params\": [], \"id\": 1}' | jq -r '.result[\"is-leader\"]'"
+    register: isLeader
+
+  - debug:
+      var: isLeader.stdout
+
+  - name: "get role of the node"
+    shell: "curl -s --request POST 'http://127.0.0.1:9500/' --header 'Content-Type: application/json' --data-raw '{ \"jsonrpc\": \"2.0\", \"method\": \"hmyv2_getNodeMetadata\", \"params\": [], \"id\": 1}' | jq -r '.result.role'"
+    register: nodeRole
+
+  - debug:
+      var: nodeRole.stdout
+
+  - name: "stop, upgrade config, restart harmony service"
+    block:
+      - name: "wait 10 seconds for aborting if needed"
+        pause:
+          seconds: 10
+
+      - name: copy harmony.conf file
+        template:
+          src: roles/node/templates/harmony.conf.j2
+          dest: "{{ USER.home }}/harmony.conf"
+          backup: yes
+          force: no
+        register: ConfigUpdated        
+
+      - name: "restart harmony service"
+        become: true
+        become_user: root
+        systemd:
+          name: harmony
+          state: restarted
+        when: ConfigUpdated.changed
+
+      - name: "find the start time of the harmony process"
+        shell: "systemctl status harmony | grep -oE 'since.*;' | sed 's/^since //'"
+        register: startTime
+        when: ConfigUpdated.changed
+
+      - debug:
+          var: startTime.stdout
+        when: ConfigUpdated.changed
+
+      - name: "check on the first BINGO/HOORAY every 15 sec for 5 minutes on validator"
+        shell:
+        args:
+          cmd: "tail -n 100 zerolog-harmony.log | grep -m 1 -E 'HOORAY|BINGO' | jq -r .time"
+          chdir: "{{ USER.home }}/latest"
+        register: firstConsensus
+        until: firstConsensus.stdout.find("T") != -1
+        retries: 20
+        delay: 15
+        when: ConfigUpdated.changed and nodeRole.stdout == 'Validator' and skip_consensus_check_var == 'false'
+
+    rescue:
+      - name: "restart harmony service" 
+        become: true
+        become_user: root
+        systemd:
+          name: harmony
+          state: started
+
+    when: isLeader.stdout == 'false' or force_update_var == 'true'
+
+  - debug:
+      var: firstConsensus.stdout
+    when: nodeRole.stdout == 'Validator' and skip_consensus_check_var == 'false'
+
+  - debug:
+      msg: "skipping leader unless force_update=true"
+    when: isLeader.stdout == 'true'

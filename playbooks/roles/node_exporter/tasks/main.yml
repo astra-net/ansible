@@ -53,7 +53,7 @@
     name: node_exporter
     daemon_reload: yes
     enabled: yes
-    state: started
+    state: restarted
 
 - name: clear trash
   ignore_errors: yes
