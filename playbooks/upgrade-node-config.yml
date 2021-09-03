@@ -42,7 +42,7 @@
           src: roles/node/templates/harmony.conf.j2
           dest: "{{ USER.home }}/harmony.conf"
           backup: yes
-          force: no
+          force: yes
         register: ConfigUpdated        
 
       - name: "restart harmony service"
