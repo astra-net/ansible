@@ -120,6 +120,22 @@
    content: |
       {{ shard }}
 
+- name: "make sure {{ db_dir }} exist"
+  file:
+    path: "{{ db_dir }}"
+    state: directory
+    mode: '0755'
+
+# Create symlink to folder if db_dir starts by /
+- name: Create a symlink to db folder if in a different partition
+  file:
+    src: "{{ db_dir }}"
+    dest: "data"
+    owner: "{{ USER.user }}"
+    group: "{{ USER.group }}"
+    state: link
+  when: db_dir[0] == '/'
+
 - name: tasks needs sudo
   block:
    - name: copy harmony service file
@@ -143,7 +159,7 @@
   become: true
   become_user: root
 
-- name: tasks for Validator
+- name: tasks for Validator or pruned explorer node
   block:
    - name: install rclone 1
      get_url:
@@ -162,4 +178,4 @@
        cmd: "{{ USER.home }}/rclone.sh mainnet.min"
        chdir: "{{ USER.home }}/"
      ignore_errors: yes
-  when: node_type_var != 'Explorer' and do_rclone == 'true'
+  when: node_type_var != 'Explorer' and do_rclone == 'true' or force_rclone == 'true'

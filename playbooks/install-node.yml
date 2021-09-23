@@ -5,6 +5,7 @@
   vars:
     - node_type_var: "{{ node_type | default('Validator') }}"
     - do_rclone: "{{ rclone | default('true') }}"
+    - force_rclone: "{{ f_rclone | default('false') }}"
     - archival: "{{ is_archival | default('false') }}"
     - do_fresh: "{{ fresh_node | default('false') }}"
     - legacy: "{{ legacy_node | default('true') }}"
