@@ -25,11 +25,12 @@ Version = "2.3.0"
   IsArchival = {{ archival }}
   IsBeaconArchival = false
   IsOffline = false
-  NoStaking = true
 {% if node_type_var == "Explorer" %}
+  NoStaking = false
   NodeType = "explorer"
   ShardID = {{ shard }}
 {% else %}
+  NoStaking = true
   NodeType = "validator"
   ShardID = -1
 {% endif %}
