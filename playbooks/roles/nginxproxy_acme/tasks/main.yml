@@ -1,0 +1,59 @@
+---
+- name: stop acme companion if started
+  ignore_errors: yes
+  docker_container:
+    name: 'nginx-proxy-acme'
+    state: stopped
+
+- name: stop nginx proxy if started 
+  ignore_errors: yes
+  docker_container:
+    name: 'nginx-proxy'
+    state: stopped
+
+- name: debug var
+  debug:
+    msg: "test : {{ docker_network_name }}"
+
+- name: 'start nginx-proxy'
+  docker_container:
+    name: 'nginx-proxy'
+    image: 'nginxproxy/nginx-proxy'
+    ports: 
+      - '80:80'
+      - '443:443'
+    volumes:
+      - 'certs:/etc/nginx/certs'
+      - 'vhost:/etc/nginx/vhost.d'
+      - 'html:/usr/share/nginx/html'
+      - '/var/run/docker.sock:/tmp/docker.sock:ro'
+    networks:
+      - name: "{{ docker_network_name }}"
+    restart_policy: unless-stopped
+
+- name: 'start acme companion'
+  docker_container:
+    name: 'nginx-proxy-acme'
+    image: 'nginxproxy/acme-companion'
+    volumes_from:
+      - 'nginx-proxy'
+    volumes:
+      - '/var/run/docker.sock:/var/run/docker.sock:ro'
+      - 'acme:/etc/acme.sh'
+    env:
+      DEFAULT_EMAIL: 'devops@harmony.one'
+    networks:
+      - name: "{{ docker_network_name }}"
+    restart_policy: unless-stopped
+
+- name: prune legacy images/container for update
+  become: yes
+  ignore_errors: yes
+  docker_prune:
+    containers: yes
+    images: yes
+    images_filters:
+      dangling: false
+    builder_cache: yes
+    #containers_filters:
+    #  until: 24h

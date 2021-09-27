@@ -1,0 +1,13 @@
+---
+- name: Prepare the environment with nginx proxy with acme for SSL 
+  hosts: '{{ inventory }}'
+  remote_user: '{{ ansible_user }}'
+  gather_facts: false
+
+  vars:
+    #overwrite that variable in command line or inventory file if you wish to use a different docker network name
+    docker_network: bridge 
+
+  tasks:  
+  - include_role:
+      name: nginxproxy_acme
