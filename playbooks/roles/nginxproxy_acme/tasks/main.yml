@@ -15,6 +15,11 @@
   debug:
     msg: "test : {{ docker_network_name }}"
 
+- name: make sure network exists
+  docker_network:
+    name: "{{ docker_network_name }}"
+    state: present
+
 - name: 'start nginx-proxy'
   docker_container:
     name: 'nginx-proxy'
