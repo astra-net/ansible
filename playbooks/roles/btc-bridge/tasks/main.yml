@@ -1,0 +1,67 @@
+---
+- name: delete btc relayer repo
+  file:
+    path: '/home/{{ ansible_user }}/onebtc.relayer-client'
+    state: absent
+  ignore_errors: yes
+
+- name: clone the repo onebtc.relayer-client
+  git:
+    repo: 'https://github.com/harmony-one/onebtc.relayer-client.git'
+    dest: '/home/{{ ansible_user }}/onebtc.relayer-client'
+    version: '{{ branch }}'
+
+- name: copy app configuration files to be added in the container
+  copy:
+    src: '{{ item.src }}'
+    dest: '/home/{{ ansible_user }}/onebtc.relayer-client/{{ item.dest }}'
+  with_items:
+  - { src: 'Dockerfile.be', dest: 'Dockerfile' }
+
+- name: build or rebuild container image
+  docker_image:
+    name: harmonyone/hmy-btc-relayer:latest
+    build:
+        path: '/home/{{ ansible_user }}/onebtc.relayer-client'
+        pull: yes
+        nocache: yes
+    source: build
+    state: present
+    force_source: yes
+
+- name: stop current container for update
+  ignore_errors: yes
+  docker_container:
+    name: 'hmy-btc-relayer:latest'
+    state: stopped
+
+- name: 'start hmy-btc-relayer:latest container'
+  docker_container:
+    name: 'btc-relayer'
+    image: 'harmonyone/hmy-btc-relayer:latest'
+    ports: '8080:8080'
+    env:
+      VIRTUAL_HOST: 'relayer.btc.test.hmny.io'
+      VIRTUAL_PORT: '8080'
+      LETSENCRYPT_HOST: 'relayer.btc.test.hmny.io'
+      LETSENCRYPT_EMAIL: 'devops@harmony.one'
+    restart_policy: unless-stopped
+
+- name: wait container launched succeed
+  wait_for:
+    host: '0.0.0.0'
+    port: '8080'
+    delay: 15
+    state: started
+
+- name: prune legacy images/container for update
+  docker_prune:
+    containers: yes
+    images: yes
+    images_filters:
+        dangling: false
+    builder_cache: yes
+  become: yes
+  ignore_errors: yes
+  #containers_filters:
+  #  until: 24h

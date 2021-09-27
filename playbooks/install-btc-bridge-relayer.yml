@@ -1,0 +1,11 @@
+- hosts: '{{ inventory }}'
+
+  vars:
+    branch: 'main'
+
+  tasks:
+  - include_role:
+      name: nginxproxy_acme
+    
+  - include_role:
+      name: btc-bridge
