@@ -16,6 +16,7 @@
     src: '{{ item.src }}'
     dest: '/home/{{ ansible_user }}/onebtc.relayer-client/{{ item.dest }}'
   with_items:
+  - { src: '.env.testnet', dest: '.env.testnet' }
   - { src: 'Dockerfile.be', dest: 'Dockerfile' }
 
 - name: build or rebuild container image
@@ -29,10 +30,27 @@
     state: present
     force_source: yes
 
+- name: stop mongodb for restart/update
+  ignore_errors: yes
+  docker_container:
+    name: 'mongo'
+    state: stopped
+
+- name: 'start mongodb'
+  docker_container:
+    name: 'mongo'
+    image: 'mongo:5.0.3'
+    ports: '27017:27017' # temporary for Yuriy. final -> '127.0.0.1:27017:27017'
+    volumes:
+      - "/home/{{ ansible_user }}/mongodata:/data/db"
+    restart_policy: unless-stopped
+    networks:
+      - name: "{{ docker_network }}"
+
 - name: stop current container for update
   ignore_errors: yes
   docker_container:
-    name: 'hmy-btc-relayer:latest'
+    name: 'btc-relayer'
     state: stopped
 
 - name: 'start hmy-btc-relayer:latest container'
@@ -40,12 +58,14 @@
     name: 'btc-relayer'
     image: 'harmonyone/hmy-btc-relayer:latest'
     ports: '8080:8080'
-    env:
+    env: #env file used for acme companion
       VIRTUAL_HOST: 'relayer.btc.test.hmny.io'
       VIRTUAL_PORT: '8080'
       LETSENCRYPT_HOST: 'relayer.btc.test.hmny.io'
       LETSENCRYPT_EMAIL: 'devops@harmony.one'
     restart_policy: unless-stopped
+    networks:
+      - name: "{{ docker_network }}"
 
 - name: wait container launched succeed
   wait_for:
@@ -59,7 +79,7 @@
     containers: yes
     images: yes
     images_filters:
-        dangling: false
+      dangling: false
     builder_cache: yes
   become: yes
   ignore_errors: yes

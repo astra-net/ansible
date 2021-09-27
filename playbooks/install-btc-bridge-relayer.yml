@@ -2,10 +2,17 @@
 
   vars:
     branch: 'main'
+    docker_network: 'btcbridge'
 
   tasks:
+  - name: Get info acme container
+    docker_container_info:
+      name: nginx-proxy
+    register: result
+
   - include_role:
       name: nginxproxy_acme
+    when: not result.exists
     
   - include_role:
       name: btc-bridge
