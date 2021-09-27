@@ -1,19 +1,41 @@
 ---
 - hosts: '{{ inventory }}'
-  
+
   roles:
   - role: geerlingguy.docker
     become: yes
 
   tasks:
-  - name: install required packages on node using apt
-    become: true
-    apt:
-      name: python3-pip
+  - name: gather OS specific variables
+    include_vars: "{{ item }}"
+    with_first_found:
+      - '{{ ansible_bios_version }}-{{ ansible_distribution }}.yml'
+      - '{{ ansible_distribution }}-{{ ansible_distribution_major_version }}.yml'
+      - '{{ ansible_distribution }}.yml'
+      - '{{ ansible_os_family }}.yml'
+      - '{{ cloud_platform }}-{{ ansible_distribution }}.yml'
+
+  - name: install required packages
+    package:
+      name: '{{ item }}'
       state: present
-      update_cache: yes
-    
+    become: true
+    with_items: '{{ PACKAGES }}'
+
   - name: install docker python packages for ansible manage docker
     become: yes
     pip:
       name: docker
+
+  - name: adding existing user '{{ ansible_user }}' to group docker
+    become: yes
+    user:
+      name: '{{ ansible_user }}'
+      groups: docker
+      append: yes
+
+  - name: reload service docker, in all cases
+    become: yes
+    systemd:
+      name: docker
+      state: restarted
