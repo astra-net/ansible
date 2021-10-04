@@ -16,7 +16,7 @@
       - vars
 
   - name: get original harmony version
-    shell: "{{ USER.home }}/harmony --version 2>&1 | grep -oE 'v[0-9]+-v[0-9.]+-[0-9]+-g[a-z0-9]+'"
+    shell: "/usr/sbin/harmony --version 2>&1 | grep -oE 'v[0-9]+-v[0-9.]+-[0-9]+-g[a-z0-9]+'"
     register: oVer
 
   - debug:
@@ -122,6 +122,19 @@
       - debug:
           var: firstConsensus.stdout
         when: nodeRole.stdout == 'Validator' and skip_consensus_check_var == 'false'
+
+      - name: "check Explorer node /node-sync is true every 15 sec for 5 minutes"
+        uri:
+          url: http://localhost:5000/node-sync
+        register: syncstatus
+        until: syncstatus.json is defined and syncstatus.json
+        retries: 20
+        delay: 15
+        when: nodeRole.stdout == 'ExplorerNode' and skip_consensus_check_var == 'false'
+
+      - debug:
+          var: syncstatus.json
+        when: nodeRole.stdout == 'ExplorerNode' and skip_consensus_check_var == 'false'
 
     rescue:
       - name: "restart harmony service" 
