@@ -16,8 +16,18 @@
     src: '{{ item.src }}'
     dest: '/home/{{ ansible_user }}/onebtc.relayer-client/{{ item.dest }}'
   with_items:
-  - { src: '.env.testnet', dest: '.env.testnet' }
   - { src: 'Dockerfile.be', dest: 'Dockerfile' }
+
+
+  - name: update env file with the mongo container name
+    lineinfile:
+      path: '{{ item.src }}'
+      regex: 'DATABASE_URL=mongodb://localhost:27017/MyDb'
+      line: 'DATABASE_URL=mongodb://mongo:27017/MyDb'
+      state: present
+    with_items:
+    - { src: '/home/{{ ansible_user }}/onebtc.relayer-client/.env.testnet'}
+    - { src: '/home/{{ ansible_user }}/onebtc.relayer-client/.env.mainnet'}
 
 - name: build or rebuild container image
   docker_image:
