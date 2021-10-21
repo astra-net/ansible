@@ -22,6 +22,43 @@
   become: true
   with_items: '{{ PACKAGES }}'
 
+- name: Create disk partition if necessary
+  block:
+  - name: create partition on {{ drive_name }} partition 1
+    parted:
+      device: '{{ drive_name }}'
+      number: 1
+      state: present
+
+  - name: Create a ext4 filesystem on /dev/nvme1n1p1 and check disk blocks
+    filesystem:
+      fstype: ext4
+      dev: '{{ part_name }}'
+
+  - name: Create {{ mount_dir }} directory for mounting
+    file:
+      path: '{{ mount_dir }}'
+      state: directory
+      owner: '{{ USER.user }}'
+      group: '{{ USER.group }}'
+      mode: '0755'
+
+  - name: Mount {{ mount_dir }}
+    mount:
+      path: '{{ mount_dir }}'
+      src: '{{ part_name }}'
+      fstype: ext4
+      state: mounted
+
+  - name: Set {{ mount_dir }} owner/group
+    file:
+      path: '{{ mount_dir }}'
+      state: directory
+      owner: '{{ USER.user }}'
+      group: '{{ USER.group }}'
+      mode: '0755'
+  when: create_partition == "true"
+  become: true
 
 - name: download hmycli
   get_url: 
@@ -36,8 +73,8 @@
     state: directory
 
 - name: download rclone.sh
-  get_url: 
-    url: https://raw.githubusercontent.com/harmony-one/terraform/master/aws.1/files/rclone.sh
+  copy: 
+    src: rclone.sh
     dest: '{{ USER.home }}/rclone.sh'
     mode: '0755'
 
@@ -120,22 +157,6 @@
    content: |
       {{ shard }}
 
-- name: "make sure {{ db_dir }} exist"
-  file:
-    path: "{{ db_dir }}"
-    state: directory
-    mode: '0755'
-
-# Create symlink to folder if db_dir starts by /
-- name: Create a symlink to db folder if in a different partition
-  file:
-    src: "{{ db_dir }}"
-    dest: "data"
-    owner: "{{ USER.user }}"
-    group: "{{ USER.group }}"
-    state: link
-  when: db_dir[0] == '/'
-
 - name: tasks needs sudo
   block:
    - name: copy harmony service file
@@ -175,7 +196,7 @@
 
    - name: run rclone
      command:
-       cmd: "{{ USER.home }}/rclone.sh mainnet.min"
+       cmd: "{{ USER.home }}/rclone.sh mainnet.min {{ db_dir }}"
        chdir: "{{ USER.home }}/"
      ignore_errors: yes
   when: node_type_var != 'Explorer' and do_rclone == 'true' or force_rclone == 'true'

@@ -12,3 +12,8 @@ USER:
    user: ec2-user
    group: ec2-user
    home: /home/ec2-user
+
+# default value for AWS disk information
+drive_name: "{{ var_drive | default('/dev/nvme1n1') }}"
+part_name: "{{ var_part | default('/dev/nvme1n1p1') }}"
+mount_dir: "{{ var_mount_dir | default('/home/ec2-user/data') }}"

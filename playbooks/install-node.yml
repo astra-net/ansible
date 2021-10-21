@@ -9,5 +9,6 @@
     - archival: "{{ is_archival | default('false') }}"
     - do_fresh: "{{ fresh_node | default('false') }}"
     - legacy: "{{ legacy_node | default('true') }}"
+    - create_partition: "{{ partition | default('false') }}"
   roles:
     - { role: node, network: mainnet }
