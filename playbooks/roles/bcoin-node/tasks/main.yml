@@ -1,0 +1,85 @@
+---
+- name: gather OS specific variables
+  include_vars: "{{ item }}"
+  with_first_found:
+    - '{{ ansible_bios_version }}-{{ ansible_distribution }}.yml'
+    - '{{ ansible_distribution }}-{{ ansible_distribution_major_version }}.yml'
+    - '{{ ansible_distribution }}.yml'
+    - '{{ ansible_os_family }}.yml'
+    - '{{ cloud_platform }}-{{ ansible_distribution }}.yml'
+  tags:
+    - vars
+
+- name: "DB will be deleted, this is your chance to abort it, you have 10s"
+  pause:
+    seconds: 10
+  when: reset_db_var == 'true'
+    
+- name: Delete DB if requested
+  ignore_errors: yes
+  file:
+    path: '{{ item }}'
+    state: absent
+    mode: '0755'
+  with_items:
+    - '/home/{{ ansible_user }}/.bcoin'
+  when: reset_db_var == 'true'
+
+- name: create directories for docker volumes
+  file:
+    path: '{{ item }}'
+    state: directory
+    mode: '0755'
+  with_items:
+    - '/home/{{ ansible_user }}/.bcoin'
+
+- name: copy files
+  copy:
+    src: '{{ item.src }}'
+    dest: '/home/{{ ansible_user }}/{{ item.dest }}'
+  with_items:
+  - { src: '.dockerignore', dest: '.dockerignore' }
+  - { src: 'Dockerfile', dest: 'Dockerfile' }
+
+- name: template for docker-compose
+  template:
+    src: '{{ item.src }}'
+    dest: '/home/{{ ansible_user }}/{{ item.dest }}'
+  with_items:
+  - { src: 'docker-compose.{{ network_var }}.yml.j2', dest: 'docker-compose.yml' }
+
+- name: build or rebuild container image
+  docker_image:
+    name: bcoin-org/bcoin:latest
+    build:
+      path: './'
+      pull: yes
+      nocache: yes
+    source: build
+    state: present
+    force_source: yes
+
+- name: bring down docker-compose if it was up
+  docker_compose:
+    project_src: ./
+    state: absent
+  ignore_errors: yes
+
+- name: bring docker-compose up with new image eventually
+  docker_compose:
+    project_src: ./
+    state: present
+    build: no
+
+- name: prune unused images/container 
+  become: yes
+  ignore_errors: yes
+  docker_prune:
+    containers: yes
+    images: yes
+    images_filters:
+      dangling: false
+    builder_cache: yes
+    #containers_filters:
+    #  until: 24h
+

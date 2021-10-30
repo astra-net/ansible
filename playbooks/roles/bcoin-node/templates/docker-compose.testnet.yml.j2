@@ -1,0 +1,29 @@
+version: '2'
+
+services:
+  bcoin:
+    image: bcoin-org/bcoin:latest
+    build: .
+    container_name: bcoin
+    restart: unless-stopped
+    user: "1000:1000"
+    ports:
+      - "18333:18333"
+      - "18334:18334" # Wallet
+    expose:
+      - 80
+    environment:
+      #below are necessary for the SSL cert generation when used with nginx proxy/acme companion
+      VIRTUAL_HOST: '{{ domain }}'
+      VIRTUAL_PORT: 80
+      LETSENCRYPT_HOST: '{{ domain }}'
+      LETSENCRYPT_EMAIL: 'devops@harmony.one'
+    networks:
+      - "bcoin"
+    volumes:
+      - ~/.bcoin:/data
+    command: --prefix /data --network={{ network_var }} --index-address=true --index-tx=true --http-host=0.0.0.0 --http-port=80 --no-auth=true --workers-size=30 --max-files=200 --mempool-size=500 --cors=true --wallet-cors=true --wallet-http-host=0.0.0.0 --wallet-http-port=18334
+
+networks:
+  bcoin:
+    name: "bcoin"

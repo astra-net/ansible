@@ -1,0 +1,23 @@
+---
+- name: install bitcoin node indexer (bcoin.org)
+  hosts: '{{ inventory }}'
+  remote_user: '{{ ansible_user }}'
+  gather_facts: yes
+
+  vars:
+    - network_var: "{{ network | default('testnet') }}" #network is either testnet or main (mainnet will fail if used)
+    - reset_db_var: "{{ reset_db | default('false') }}"
+    - docker_network: 'bcoin'
+
+  tasks:
+  - name: Get info acme container
+    docker_container_info:
+      name: nginx-proxy
+    register: result
+
+  - include_role:
+      name: nginxproxy_acme
+    when: not result.exists 
+
+  - include_role:
+      name: bcoin-node
