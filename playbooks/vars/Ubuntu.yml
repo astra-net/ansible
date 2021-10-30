@@ -3,6 +3,7 @@ PACKAGES:
    - unzip
    - jq
    - python3-pip
+   - net-tools
 
 USER:
    user: ubuntu
