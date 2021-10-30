@@ -31,4 +31,4 @@ fi
 rclone sync -P release:pub.harmony.one/${FOLDER}/harmony_db_0 ${HMY_DB_DIR}/harmony_db_0
 
 # restart the harmony service
-# sudo systemctl start harmony.service
+sudo systemctl start harmony.service
