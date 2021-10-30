@@ -11,15 +11,29 @@
     dest: '/home/{{ ansible_user }}/onebtc.relayer-client'
     version: '{{ branch }}'
 
-- name: copy app configuration files to be added in the container
+- name: copy dockerfile
+  template:
+    src: 'Dockerfile.be.j2'
+    dest: '/home/{{ ansible_user }}/onebtc.relayer-client/Dockerfile'
+    force: yes
+
+- name: create directories for docker volumes
+  file:
+    path: '{{ item }}'
+    state: directory
+    mode: '0755'
+  with_items:
+    - '/home/{{ ansible_user }}/onebtc-disk'
+
+- name: copy data to shared folder for relayers and vaults
   copy:
     src: '{{ item.src }}'
-    dest: '/home/{{ ansible_user }}/onebtc.relayer-client/{{ item.dest }}'
+    dest: '/home/{{ ansible_user }}/onebtc-disk/{{ item.dest }}'
   with_items:
-  - { src: 'Dockerfile.be', dest: 'Dockerfile' }
+  - { src: '{{ function }}.{{ network }}.env.private', dest: 'env.private' }
+  when: function == 'relayer' or function == 'vault'
 
-
-- name: update env file with the mongo container name
+- name: update repo env file with mongo container name
   lineinfile:
     path: '{{ item.src }}'
     regex: 'DATABASE_URL=mongodb://localhost:27017/MyDb'
@@ -33,9 +47,9 @@
   docker_image:
     name: harmonyone/hmy-btc-relayer:latest
     build:
-        path: '/home/{{ ansible_user }}/onebtc.relayer-client'
-        pull: yes
-        nocache: yes
+      path: '/home/{{ ansible_user }}/onebtc.relayer-client'
+      pull: yes
+      nocache: yes
     source: build
     state: present
     force_source: yes
@@ -68,10 +82,12 @@
     name: 'btc-relayer'
     image: 'harmonyone/hmy-btc-relayer:latest'
     ports: '8080:8080'
+    volumes:
+      - '/home/{{ ansible_user }}/onebtc-disk/:/app/keys/'
     env: #env file used for acme companion
-      VIRTUAL_HOST: 'relayer.btc.test.hmny.io'
+      VIRTUAL_HOST: "{{ domain }}"
       VIRTUAL_PORT: '8080'
-      LETSENCRYPT_HOST: 'relayer.btc.test.hmny.io'
+      LETSENCRYPT_HOST: "{{ domain }}"
       LETSENCRYPT_EMAIL: 'devops@harmony.one'
     restart_policy: unless-stopped
     networks:
@@ -95,3 +111,11 @@
   ignore_errors: yes
   #containers_filters:
   #  until: 24h
+
+- name: clear secret files
+  ignore_errors: yes
+  file:
+    path: "{{ item }}"
+    state: absent
+  with_items:
+    - '/home/{{ ansible_user }}/onebtc-disk/.env.private'

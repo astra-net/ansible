@@ -3,9 +3,9 @@ FROM node:12-alpine3.12
 RUN apk add git
 WORKDIR /app
 
-ENV NODE_ENV testnet
+ENV NODE_ENV {{ network }}
 
-#RUN mkdir -p /root/.aws /app/keys /app/encrypted
+RUN mkdir -p /app/keys
 
 COPY . /app/
 #RUN mv .env.testnet .env
