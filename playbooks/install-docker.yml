@@ -25,7 +25,10 @@
   - name: install docker python packages for ansible manage docker
     become: yes
     pip:
-      name: docker
+      name: "{{ item }}"
+    with_items:
+      - docker
+      - docker-compose
 
   - name: adding existing user '{{ ansible_user }}' to group docker
     become: yes
