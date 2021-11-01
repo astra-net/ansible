@@ -30,7 +30,7 @@
     src: '{{ item.src }}'
     dest: '/home/{{ ansible_user }}/onebtc-disk/{{ item.dest }}'
   with_items:
-  - { src: '{{ function }}.{{ network }}.env.private', dest: 'env.private' }
+  - { src: '{{ function }}.{{ network }}.env.private', dest: '.env.private' }
   when: function == 'relayer' or function == 'vault'
 
 - name: update repo env file with mongo container name
