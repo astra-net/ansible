@@ -24,14 +24,28 @@
     mode: '0755'
   with_items:
     - '/home/{{ ansible_user }}/onebtc-disk'
+    - '/home/{{ ansible_user }}/onebtc-disk/keys'
+    - '/home/{{ ansible_user }}/onebtc-disk/aws'
 
-- name: copy data to shared folder for relayers and vaults
+- name: copy relayers data to shared volume
   copy:
     src: '{{ item.src }}'
     dest: '/home/{{ ansible_user }}/onebtc-disk/{{ item.dest }}'
   with_items:
-  - { src: '{{ function }}.{{ network }}.env.private', dest: '.env.private' }
-  when: function == 'relayer' or function == 'vault'
+  - { src: '{{ function }}.{{ network }}.env.private', dest: 'keys/.env.private' }
+  when: function == 'relayer'
+
+- name: copy vaults data to shared volume
+  ignore_errors: yes
+  copy:
+    src: '{{ item.src }}'
+    dest: '/home/{{ ansible_user }}/onebtc-disk/{{ item.dest }}'
+  with_items:
+  - { src: '{{ function }}.{{ network }}.env.private', dest: 'keys/.env.private' }
+  - { src: '{{ inventory_hostname }}/credentials', dest: 'aws/credentials' }
+  - { src: '{{ inventory_hostname }}/btc-secret', dest: 'keys/btc-secret' }
+  - { src: '{{ inventory_hostname }}/hmy-secret', dest: 'keys/hmy-secret' }
+  when: function == 'vault'
 
 - name: update repo env file with mongo container name
   lineinfile:
@@ -64,7 +78,7 @@
   docker_container:
     name: 'mongo'
     image: 'mongo:5.0.3'
-    ports: '27017:27017' # temporary for Yuriy. final -> '127.0.0.1:27017:27017'
+    ports: '127.0.0.1:27017:27017'
     volumes:
       - "/home/{{ ansible_user }}/mongodata:/data/db"
     restart_policy: unless-stopped
@@ -77,45 +91,63 @@
     name: 'btc-relayer'
     state: stopped
 
-- name: 'start hmy-btc-relayer:latest container'
-  docker_container:
-    name: 'btc-relayer'
-    image: 'harmonyone/hmy-btc-relayer:latest'
-    ports: '8080:8080'
-    volumes:
-      - '/home/{{ ansible_user }}/onebtc-disk/:/app/keys/'
-    env: #env file used for acme companion
-      VIRTUAL_HOST: "{{ domain }}"
-      VIRTUAL_PORT: '8080'
-      LETSENCRYPT_HOST: "{{ domain }}"
-      LETSENCRYPT_EMAIL: 'devops@harmony.one'
-    restart_policy: unless-stopped
-    networks:
-      - name: "{{ docker_network }}"
+- name: handle docker container start error
+  block:
+  - name: 'start hmy-btc-relayer:latest container'
+    docker_container:
+      name: 'btc-relayer'
+      image: 'harmonyone/hmy-btc-relayer:latest'
+      ports: 
+        - "{{ docker_ports }}"
+      volumes:
+        - '/home/{{ ansible_user }}/onebtc-disk/aws/:/root/.aws/'
+        - '/home/{{ ansible_user }}/onebtc-disk/keys/:/app/keys/'
+      env:
+        UI_PORT: "{{ virtual_port | string }}"
+        #env var used for acme companion
+        VIRTUAL_HOST: "{{ domain }}"
+        VIRTUAL_PORT: "{{ virtual_port | string }}"
+        LETSENCRYPT_HOST: "{{ domain }}"
+        LETSENCRYPT_EMAIL: 'devops@harmony.one'      
+      restart_policy: unless-stopped
+      networks:
+        - name: "{{ docker_network }}"
 
-- name: wait container launched succeed
-  wait_for:
-    host: '0.0.0.0'
-    port: '8080'
+  - name: wait container launched succeed
+    wait_for:
+      host: '0.0.0.0'
+      port: "{{ virtual_port }}"
+      delay: 15
+      state: started
+
+  - name: "Checking the api/vault-client/info for LAUNCHED every 15 sec for 5 minutes"
+    uri:
+      url: "http://localhost:{{ virtual_port | string }}/api/vault-client/info"
+    register: _result
+    until: _result.status == 200 and _result.json is defined and _result.json.status == "LAUNCHED"
+    retries: 20
     delay: 15
-    state: started
+    when: function == 'vault'
 
-- name: prune legacy images/container for update
-  docker_prune:
-    containers: yes
-    images: yes
-    images_filters:
-      dangling: false
-    builder_cache: yes
-  become: yes
-  ignore_errors: yes
-  #containers_filters:
-  #  until: 24h
+  rescue:
+    - name: Error messages
+      debug:
+        msg: 'This deployment failed and node will not be recoverable'
+  always:
+  - name: clear all secret files on the onebtc-disk
+    ignore_errors: yes
+    file:
+      path: "{{ item }}"
+      state: absent
+    with_items:
+      - '/home/{{ ansible_user }}/onebtc-disk/'
 
-- name: clear secret files
-  ignore_errors: yes
-  file:
-    path: "{{ item }}"
-    state: absent
-  with_items:
-    - '/home/{{ ansible_user }}/onebtc-disk/.env.private'
+  - name: prune legacy images/container for update
+    docker_prune:
+      containers: yes
+      images: yes
+      images_filters:
+        dangling: false
+      builder_cache: yes
+    become: yes
+    ignore_errors: yes
