@@ -32,7 +32,7 @@
     src: '{{ item.src }}'
     dest: '/home/{{ ansible_user }}/onebtc-disk/{{ item.dest }}'
   with_items:
-  - { src: '{{ function }}.{{ network }}.env.private', dest: 'keys/.env.private' }
+  - { src: '{{ inventory_hostname }}.env.private', dest: 'keys/.env.private' }
   when: function == 'relayer'
 
 - name: copy vaults data to shared volume
@@ -41,7 +41,7 @@
     src: '{{ item.src }}'
     dest: '/home/{{ ansible_user }}/onebtc-disk/{{ item.dest }}'
   with_items:
-  - { src: '{{ function }}.{{ network }}.env.private', dest: 'keys/.env.private' }
+  - { src: '{{ inventory_hostname }}.env.private', dest: 'keys/.env.private' }
   - { src: '{{ inventory_hostname }}/credentials', dest: 'aws/credentials' }
   - { src: '{{ inventory_hostname }}/btc-secret', dest: 'keys/btc-secret' }
   - { src: '{{ inventory_hostname }}/hmy-secret', dest: 'keys/hmy-secret' }
