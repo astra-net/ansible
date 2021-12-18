@@ -24,11 +24,11 @@ unset shard
 # determine the shard number
 shard=$(cat shard.txt)
 if [ $shard != 0 ]; then
-   rclone sync -P release:pub.harmony.one/${FOLDER}/harmony_db_${shard} ${HMY_DB_DIR}/harmony_db_${shard}
+   rclone sync -P release:pub.harmony.one/${FOLDER}/harmony_db_${shard} ${HMY_DB_DIR}/harmony_db_${shard} --multi-thread-streams 4 --transfers=16
 fi
 
 # download beacon chain db anyway
-rclone sync -P release:pub.harmony.one/${FOLDER}/harmony_db_0 ${HMY_DB_DIR}/harmony_db_0
+rclone sync -P release:pub.harmony.one/${FOLDER}/harmony_db_0 ${HMY_DB_DIR}/harmony_db_0 --multi-thread-streams 4 --transfers=64
 
 # restart the harmony service
 sudo systemctl start harmony.service
