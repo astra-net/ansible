@@ -12,8 +12,10 @@
   - name: gather OS specific variables
     include_vars: "{{ item }}"
     with_first_found:
-      - '{{ ansible_bios_version }}-{{ ansible_distribution }}.yml'
-      - '{{ cloud_platform }}-{{ ansible_distribution }}.yml'
+    - '{{ ansible_bios_version }}-{{ ansible_distribution }}.yml'
+    - '{{ ansible_distribution }}-{{ ansible_distribution_major_version }}.yml'
+    - '{{ ansible_distribution }}.yml'
+    - '{{ ansible_os_family }}.yml'
     tags:
       - vars
 
@@ -72,6 +74,15 @@
         retries: 20
         delay: 15
         when: ConfigUpdated.changed and nodeRole.stdout == 'Validator' and skip_consensus_check_var == 'false'
+
+      - name: "check Explorer node /node-sync is true every 15 sec for 5 minutes"
+        uri:
+          url: http://localhost:5000/node-sync
+        register: syncstatus
+        until: syncstatus.status == 200 and syncstatus.json is defined and syncstatus.json
+        retries: 20
+        delay: 15
+        when: ConfigUpdated.changed and nodeRole.stdout == 'ExplorerNode' and skip_consensus_check_var == 'false'
 
     rescue:
       - name: "restart harmony service" 

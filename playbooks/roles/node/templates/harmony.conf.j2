@@ -1,4 +1,4 @@
-Version = "2.3.0"
+Version = "2.5.0"
 
 [BLSKeys]
   KMSConfigFile = ""
@@ -36,6 +36,7 @@ Version = "2.3.0"
 {% endif %}
 
 [HTTP]
+  AuthPort = 9501
   Enabled = true
   IP = "0.0.0.0"
   Port = 9500
@@ -49,6 +50,8 @@ Version = "2.3.0"
 [Log]
   FileName = "harmony.log"
   Folder = "./latest"
+  RotateCount = 0
+  RotateMaxAge = 30
   RotateSize = 100
   Verbosity = 3
 
@@ -63,10 +66,12 @@ Version = "2.3.0"
   DiscConcurrency = 0
   IP = "0.0.0.0"
   KeyFile = "./.hmykey"
+  MaxConnsPerIP = 10
   Port = 9000
 
 [Pprof]
   Enabled = true
+  Folder = "./profiles"
   ListenAddr = "0.0.0.0:6060"
   ProfileDebugValues = [0]
   ProfileIntervals = [600]
@@ -96,6 +101,7 @@ Version = "2.3.0"
   BlacklistFile = "./.hmy/blacklist.txt"
 
 [WS]
+  AuthPort = 9801
   Enabled = true
 {% if node_type_var == "Explorer" %}
   IP = "0.0.0.0"

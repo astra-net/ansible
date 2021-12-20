@@ -5,13 +5,19 @@
   vars:
     force_update_var: "{{ force_update | default('false') }}"
     skip_consensus_check_var: "{{ skip_consensus_check | default('false') }}"
+    update_hmy_cfg: "{{ hmy_cfg | default('false') }}"
+    archival: "{{ is_archival | default('false') }}"
+    node_type_var: "{{ node_type | default('Validator') }}"
 
   tasks:
   - name: gather OS specific variables
     include_vars: "{{ item }}"
     with_first_found:
-      - '{{ ansible_bios_version }}-{{ ansible_distribution }}.yml'
-      - '{{ cloud_platform }}-{{ ansible_distribution }}.yml'
+    - '{{ ansible_bios_version }}-{{ ansible_distribution }}.yml'
+    - '{{ ansible_distribution }}-{{ ansible_distribution_major_version }}.yml'
+    - '{{ ansible_distribution }}.yml'
+    - '{{ ansible_os_family }}.yml'
+    - '{{ cloud_platform }}-{{ ansible_distribution }}.yml'
     tags:
       - vars
 
@@ -51,6 +57,15 @@
 
   - debug:
       var: isLeader.stdout
+
+  # config update is effective only if there is an binary update or forced to be update ie with force_update_var
+  - name: update harmony.conf file
+    template:
+      src: roles/node/templates/harmony.conf.j2
+      dest: "{{ USER.home }}/harmony.conf"
+      backup: yes
+      force: yes
+    when: update_hmy_cfg
 
   - name: "stop, upgrade, restart harmony service"
     block:
@@ -127,7 +142,7 @@
         uri:
           url: http://localhost:5000/node-sync
         register: syncstatus
-        until: syncstatus.json is defined and syncstatus.json
+        until: syncstatus.status == 200 and syncstatus.json is defined and syncstatus.json
         retries: 20
         delay: 15
         when: nodeRole.stdout == 'ExplorerNode' and skip_consensus_check_var == 'false'
