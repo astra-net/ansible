@@ -1,0 +1,92 @@
+---
+- hosts: '{{ inventory }}'
+
+  vars:
+    # max block difference to trigger the restart with sync-status true
+    block_tolerance: 100
+    # max block difference to trigger the restart with no sync-status (nss) check
+    block_tolerance_nss: 500
+
+  tasks:
+  - name: get original harmony version
+    shell: "/usr/sbin/harmony --version 2>&1 | grep -oE 'v[0-9]+-v[0-9.]+-[0-9]+-g[a-z0-9]+'"
+    register: oVer
+
+  - name: show current/old version
+    debug:
+      var: oVer.stdout
+
+  - name: "check Explorer node /node-sync"
+    uri:
+      url: http://localhost:5000/node-sync
+      status_code: 
+        - 418
+        - 200
+    register: syncstatus
+
+  - name: "show syncstatus"
+    debug:
+      msg: "node-sync status is {{ syncstatus.json }}"
+    when: syncstatus
+
+  - name: "check node last s0 block"
+    uri:
+      url: http://localhost:5000/node-sync
+      status_code: 
+        - 418
+        - 200
+    register: syncstatus
+
+  - name: get s0 latest block from watchdog status page 
+    uri:
+      url: https://watchdog.hmny.io/status-mainnet
+      user: harmony
+      password: "{{ wpass }}"
+      force_basic_auth: yes
+    register: net_status
+
+  # - name: show watchdog status call result
+  #   debug: 
+  #     var: net_status.json
+
+  # full working JMESquery : net_status.json."shard-status"[?"shard-id"=='0'].{blocknumber: "current-block-number"}[0].blocknumber
+  - name: filter s0 latest block from call
+    debug: msg="{{ net_status | json_query(jmesquery) }}"
+    vars:
+      jmesquery: >
+        json."shard-status"[?"shard-id"=='0'].{blocknumber: "current-block-number"}[0].blocknumber
+    register: maxblock
+
+  - name: show value of maxblock
+    debug:
+      var: maxblock.msg
+
+  - name: get s0 latest block from watchdog status page 
+    uri:
+      url: http://localhost:9500
+      body_format: json
+      body: '{"jsonrpc": "2.0","id": 1,"method": "hmyv2_latestHeader","params": []}'
+    register: node_block
+
+  - name: "show node S0 last block number"
+    debug: 
+      var: node_block.json.result.blockNumber
+
+  - name: "node is behind {{ maxblock.msg | int - node_block.json.result.blockNumber | int }}"
+    debug:
+      var: "maxblock.msg | int - node_block.json.result.blockNumber | int"
+
+  - name: "restart harmony service when sync status is false and node is behind {{ block_tolerance }}"
+    become: true
+    systemd:
+      name: harmony
+      state: restarted
+    when: syncstatus.json and (maxblock.msg | int - node_block.json.result.blockNumber | int > block_tolerance)
+    register: restart_status
+
+  - name : "restart harmony service when node is behind with more than {{ block_tolerance_nss }}"
+    become: true
+    systemd:
+      name: harmony
+      state: restarted
+    when: not restart_status.changed and maxblock.msg | int - node_block.json.result.blockNumber | int > block_tolerance_nss
