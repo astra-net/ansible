@@ -12,7 +12,7 @@
 
   - name: install harmony.service
     copy:
-      src: harmony.service
+      src: ptn/harmony.service
       dest: /etc/systemd/system/harmony.service
 
   - name: create /etc/harmony
@@ -25,7 +25,7 @@
 
   - name: install harmony.conf
     copy:
-      src: harmony.conf
+      src: ptn/harmony.conf
       dest: /etc/harmony/harmony.conf
       owner: "{{ ansible_user }}"
       group: "{{ ansible_user }}"

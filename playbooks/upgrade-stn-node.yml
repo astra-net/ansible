@@ -20,7 +20,8 @@
       force: yes
 
   - name: "archive harmony log"
-    command: "mv /home/ubuntu/latest/zerolog-harmony.log /home/ubuntu/latest/zerolog-harmony.log.{{ ansible_date_time.iso8601 }}"
+    command: "mv /home/{{ ansible_user }}/latest/zerolog-harmony.log /home/{{ ansible_user }}/latest/zerolog-harmony.log.{{ ansible_date_time.iso8601 }}"
+    ignore_errors: yes
 
   - name: "restart harmony service"
     systemd:
@@ -36,7 +37,7 @@
     shell:
     args:
       cmd: "tail -n 30 zerolog-harmony.log | grep -m 1 -E 'HOORAY|BINGO' | jq -r .time"
-      chdir: "/home/ubuntu/latest"
+      chdir: "/home/{{ ansible_user }}/latest"
     register: firstConsensus
     until: firstConsensus.stdout.find("T") != -1
     retries: 20
