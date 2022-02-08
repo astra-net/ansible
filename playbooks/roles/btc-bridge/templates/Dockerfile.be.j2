@@ -6,6 +6,9 @@ ENV NODE_ENV {{ network }}
 
 {% if function == "vault" %}
 ENV MODE vault
+{% endif %}
+{% if function == "security" %}
+ENV MODE security
 {% else %}
 ENV MODE base
 {% endif %}
@@ -16,11 +19,14 @@ COPY package.json /app/package.json
 #COPY package-lock.json /app/package-lock.json
 COPY env.js /app/env.js
 COPY tsconfig.json /app/tsconfig.json
+{% if function == "security" %}
+COPY .env.security.{{ network }} /app/.env.{{ network }}
+{% else %}
 COPY .env.{{ network }} /app/.env.{{ network }}
+{% endif %}
 COPY proxy.js /app/proxy.js
 COPY start.sh /app/start.sh
 
 RUN npm i && npm run build
-RUN npm i -g serve
 
 CMD sh ./start.sh

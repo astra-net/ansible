@@ -27,13 +27,13 @@
     - '/home/{{ ansible_user }}/onebtc-disk/keys'
     - '/home/{{ ansible_user }}/onebtc-disk/aws'
 
-- name: copy relayers data to shared volume
+- name: copy relayers/security data to a shared volume
   copy:
     src: '{{ item.src }}'
     dest: '/home/{{ ansible_user }}/onebtc-disk/{{ item.dest }}'
   with_items:
   - { src: '{{ inventory_hostname }}.env.private', dest: 'keys/.env.private' }
-  when: function == 'relayer'
+  when: function == 'relayer' or function == 'security'
 
 - name: copy vaults data to shared volume
   ignore_errors: yes
@@ -41,6 +41,7 @@
     src: '{{ item.src }}'
     dest: '/home/{{ ansible_user }}/onebtc-disk/{{ item.dest }}'
   with_items:
+  - { src: 'aws-config', dest: 'aws/config' }
   - { src: '{{ inventory_hostname }}.env.private', dest: 'keys/.env.private' }
   - { src: '{{ inventory_hostname }}/credentials', dest: 'aws/credentials' }
   - { src: '{{ inventory_hostname }}/btc-secret', dest: 'keys/btc-secret' }
@@ -56,6 +57,17 @@
   with_items:
   - { src: '/home/{{ ansible_user }}/onebtc.relayer-client/.env.testnet'}
   - { src: '/home/{{ ansible_user }}/onebtc.relayer-client/.env.mainnet'}
+  - { src: '/home/{{ ansible_user }}/onebtc.relayer-client/.env.security.mainnet'} 
+
+- name: making sure the security node use different btc node
+  lineinfile:
+    path: '{{ item.src }}'
+    regex: 'BTC_NODE_URL=https://btc.main.hmny.io'
+    line: "BTC_NODE_URL={{ btcnodeurl }}"
+    state: present
+  with_items:
+  - { src: '/home/{{ ansible_user }}/onebtc.relayer-client/.env.security.mainnet'} 
+  when: function == 'security'
 
 - name: build or rebuild container image
   docker_image:
@@ -108,7 +120,7 @@
         VIRTUAL_HOST: "{{ domain }}"
         VIRTUAL_PORT: "{{ virtual_port | string }}"
         LETSENCRYPT_HOST: "{{ domain }}"
-        LETSENCRYPT_EMAIL: 'devops@harmony.one'      
+        LETSENCRYPT_EMAIL: 'devops@harmony.one'
       restart_policy: unless-stopped
       networks:
         - name: "{{ docker_network }}"
@@ -128,6 +140,15 @@
     retries: 20
     delay: 15
     when: function == 'vault'
+
+  - name: "Checking the security/info for LAUNCHED every 15 sec for 5 minutes"
+    uri:
+      url: "http://localhost:{{ virtual_port | string }}/security/info"
+    register: _result
+    until: _result.status == 200 and _result.json is defined and _result.json.security.status == "LAUNCHED"
+    retries: 20
+    delay: 15
+    when: function == 'security'
 
   rescue:
     - name: Error messages
