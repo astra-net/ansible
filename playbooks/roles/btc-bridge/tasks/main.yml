@@ -134,7 +134,7 @@
 
   - name: "Checking the api/vault-client/info for LAUNCHED every 15 sec for 5 minutes"
     uri:
-      url: "http://localhost:{{ virtual_port | string }}/api/vault-client/info"
+      url: "http://localhost:{{ virtual_port | string }}/vault-client/info"
     register: _result
     until: _result.status == 200 and _result.json is defined and _result.json.status == "LAUNCHED"
     retries: 20
