@@ -22,10 +22,13 @@
     path: '{{ item }}'
     state: directory
     mode: '0755'
+    owner: "{{ ansible_user}}"
+    group: "{{ ansible_user}}"
   with_items:
     - '/home/{{ ansible_user }}/onebtc-disk'
     - '/home/{{ ansible_user }}/onebtc-disk/keys'
     - '/home/{{ ansible_user }}/onebtc-disk/aws'
+  become: true
 
 - name: copy relayers/security data to a shared volume
   copy:
