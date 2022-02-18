@@ -51,6 +51,9 @@
     - username: "sk"
       groups: "adm,wheel"
       comment: "Socheat Khauv"
+    - username: "ak"
+      groups: "adm,wheel"
+      comment: "Artem K"
     remove_users:
     - "foo"
     - "as"
