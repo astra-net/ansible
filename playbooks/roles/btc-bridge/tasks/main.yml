@@ -155,8 +155,8 @@
 
   rescue:
     - name: Error messages
-      debug:
-        msg: 'This deployment failed and node will not be recoverable'
+      fail:
+        msg: 'This deployment failed and node may not currently work, check deployment logs'
   always:
   - name: clear all secret files on the onebtc-disk
     ignore_errors: yes
@@ -165,6 +165,7 @@
       state: absent
     with_items:
       - '/home/{{ ansible_user }}/onebtc-disk/'
+    become: true
 
   - name: prune legacy images/container for update
     docker_prune:
