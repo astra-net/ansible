@@ -54,6 +54,12 @@
     - username: "ak"
       groups: "adm,wheel"
       comment: "Artem K"
+    - username: "kp"
+      groups: "adm,wheel"
+      comment: "Kostya Potapov "
+    - username: "mm"
+      groups: "adm,wheel"
+      comment: "MaxMustermann2"
     remove_users:
     - "foo"
     - "as"
