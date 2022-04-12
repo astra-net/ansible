@@ -1,4 +1,4 @@
-Version = "2.5.0"
+Version = "2.5.1"
 
 [BLSKeys]
   KMSConfigFile = ""
@@ -25,14 +25,17 @@ Version = "2.5.0"
   IsArchival = {{ archival }}
   IsBeaconArchival = false
   IsOffline = false
-{% if node_type_var == "Explorer" %}
-  NoStaking = false
+  NoStaking = {{ internal_node_var }}
+{% if node_type_var == "Explorer" %}  
   NodeType = "explorer"
   ShardID = {{ shard }}
+  EnablePruneBeaconChain = false
 {% else %}
-  NoStaking = true
   NodeType = "validator"
   ShardID = -1
+  {% if shard != 0 %}
+EnablePruneBeaconChain = true
+  {% endif %}
 {% endif %}
 
 [HTTP]
@@ -98,6 +101,7 @@ Version = "2.5.0"
   MinPeers = 6
 
 [TxPool]
+  AccountSlots = 16
   BlacklistFile = "./.hmy/blacklist.txt"
 
 [WS]
@@ -109,4 +113,3 @@ Version = "2.5.0"
   IP = "127.0.0.1"
 {% endif %}
   Port = 9800
-

@@ -67,23 +67,6 @@
     mode: '0755'
   become: true
 
-- name: create .config/rclone directory
-  file:
-    path: "{{ USER.home }}/.config/rclone"
-    state: directory
-
-- name: download rclone.sh
-  copy: 
-    src: rclone.sh
-    dest: '{{ USER.home }}/rclone.sh'
-    mode: '0755'
-
-- name: download rclone.conf
-  get_url:
-    url: https://raw.githubusercontent.com/harmony-one/terraform/master/aws.1/files/rclone.conf
-    dest: '{{ USER.home }}/.config/rclone/rclone.conf'
-    mode: '0644'
-
 - name: clean up legacy
   ignore_errors: yes
   file:
@@ -180,23 +163,40 @@
   become: true
   become_user: root
 
+- name: create .config/rclone directory
+  file:
+    path: "{{ USER.home }}/.config/rclone"
+    state: directory
+
+- name: download rclone.sh run script
+  copy: 
+    src: rclone.sh
+    dest: '{{ USER.home }}/rclone.sh'
+    mode: '0755'
+
+- name: download rclone.conf
+  get_url:
+    url: https://raw.githubusercontent.com/harmony-one/terraform/master/aws.1/files/rclone.conf
+    dest: '{{ USER.home }}/.config/rclone/rclone.conf'
+    mode: '0644'
+
+- name: download rclone install script
+  get_url:
+    url: https://rclone.org/install.sh
+    dest: '{{ USER.home }}/install-rclone.sh'
+    mode: '0755'
+
+- name: install rclone
+  command:
+    cmd: "{{ USER.home }}/install-rclone.sh"
+  ignore_errors: yes
+  become: true
+
 - name: tasks for Validator or pruned explorer node
   block:
-   - name: install rclone 1
-     get_url:
-       url: https://rclone.org/install.sh
-       dest: '{{ USER.home }}/install-rclone.sh'
-       mode: '0755'
-
-   - name: install rclone 2
-     command:
-        cmd: "{{ USER.home }}/install-rclone.sh"
-     ignore_errors: yes
-     become: true
-
    - name: run rclone
      command:
-       cmd: "{{ USER.home }}/rclone.sh mainnet.min {{ db_dir }}"
+       cmd: "{{ USER.home }}/rclone.sh mainnet.min {{ db_dir }} {{ node_type_var }}"
        chdir: "{{ USER.home }}/"
      ignore_errors: yes
   when: node_type_var != 'Explorer' and do_rclone == 'true' or force_rclone == 'true'
