@@ -60,6 +60,9 @@
     - username: "mm"
       groups: "adm,wheel"
       comment: "MaxMustermann2"
+    - username: "tj"
+      groups: "adm,wheel"
+      comment: "Tahir Javed"
     remove_users:
     - "foo"
     - "as"
