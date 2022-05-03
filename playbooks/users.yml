@@ -63,6 +63,9 @@
     - username: "tj"
       groups: "adm,wheel"
       comment: "Tahir Javed"
+    - username: "dn"
+      groups: "adm,wheel"
+      comment: "Diego Nava"
     remove_users:
     - "foo"
     - "as"
