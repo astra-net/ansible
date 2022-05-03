@@ -66,6 +66,9 @@
     - username: "ms"
       groups: "adm,wheel"
       comment: "Mohamed Sayadi"
+    - username: "dn"
+      groups: "adm,wheel"
+      comment: "Diego Nava"
     remove_users:
     - "foo"
     - "as"
