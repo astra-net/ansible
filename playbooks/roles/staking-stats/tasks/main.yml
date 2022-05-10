@@ -1,0 +1,95 @@
+---
+- name: delete staking dashboard repo
+  file:
+    path: '/home/{{ ansible_user }}/staking-dashboard.statistic'
+    state: absent
+  ignore_errors: yes
+
+- name: clone the repo staking-dashboard.statistic
+  git:
+    repo: 'https://github.com/harmony-one/staking-dashboard.statistic.git'
+    dest: '/home/{{ ansible_user }}/staking-dashboard.statistic'
+    version: '{{ branch }}'
+
+- name: build or rebuild container image
+  docker_image:
+    name: harmonyone/staking-stats:latest
+    build:
+      path: '/home/{{ ansible_user }}/staking-dashboard.statistic'
+      pull: yes
+      nocache: yes
+    source: build
+    state: present
+    force_source: yes
+  become: true
+
+- name: Create a network
+  docker_network:
+    name: staking
+
+- name: stop mongodb for restart/update
+  ignore_errors: yes
+  docker_container:
+    name: 'mongo-service'
+    state: stopped
+
+- name: 'start mongodb'
+  docker_container:
+    name: 'mongo-service'
+    image: 'mongo:latest'
+    ports: '27017:27017'
+    volumes:
+      - "/home/{{ ansible_user }}/mongodb:/data/db"
+    restart_policy: unless-stopped
+    networks:
+      - name: 'staking'
+
+- name: stop current container for update
+  ignore_errors: yes
+  docker_container:
+    name: 'staking-stats'
+    state: stopped
+
+- name: handle docker container start error
+  block:
+  - name: 'start staking-stats:latest container'
+    docker_container:
+      name: 'staking-stats'
+      image: 'harmonyone/staking-stats:latest'
+      ports: 
+        - "3000:3000"
+      restart_policy: unless-stopped
+      env:
+        DATABASE_URL: 'mongodb://mongo-service:27017/MyDb'
+      networks:
+        - name: 'staking'
+
+  - name: wait container launched succeed
+    wait_for:
+      host: '0.0.0.0'
+      port: 3000
+      delay: 15
+      state: started
+
+  - name: "Checking the health check status of ok"
+    uri:
+      url: "http://localhost:3000/"
+    register: _result
+    until: _result.status == 200 and _result.json is defined and _result.json.status == "ok"
+    retries: 20
+    delay: 15
+
+  rescue:
+    - name: Error messages
+      fail:
+        msg: 'This deployment failed and node may not currently work, check deployment logs'
+  always:
+  - name: prune legacy images/container for update
+    docker_prune:
+      containers: yes
+      images: yes
+      images_filters:
+        dangling: false
+      builder_cache: yes
+    become: yes
+    ignore_errors: yes
